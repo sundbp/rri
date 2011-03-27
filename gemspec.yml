@@ -2,7 +2,7 @@ name: rri
 summary: "TODO: Summary"
 description: "TODO: Description"
 license: MIT
-authors: pts
+authors: Patrik Sundberg
 homepage: http://rubygems.org/gems/rri
 has_yard: true
 
