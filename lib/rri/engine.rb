@@ -40,6 +40,14 @@ module Rri
       @engine = Jri::JRIEngine.new(combined_options[:r_arguments].to_java(:string),
                                    combined_options[:callback_object],
                                    combined_options[:run_repl])
+      # the R thread wont die unless we call #close on @engine, so make sure this
+      # happens when this object is finalized.
+      ObjectSpace.define_finalizer(self, self.class.finalize(@engine))
+    end
+    
+    # Helper to make sure all engines are finalized so the R thread dies as it should
+    def self.finalize(engine)
+      proc { engine.close }
     end
     
     # Eval expression and convert result to the corresponding ruby type
