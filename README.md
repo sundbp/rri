@@ -78,12 +78,19 @@ to the **PATH**.
 The last thing we need to make sure of is that the shared library distributed with JRI is
 accessible by the operating system. I have not gone over this exercise on unix type systems
 yet but on Windows this means that the path set in **RRI_JRI_JAR_PATH** is also part of the
-PATH.
+**PATH**.
 
 I tried to add this to the path within the rri gem itself before loading the JRI jars
 but it seems the jruby class loader fails to pick it up so it needs to be part of the **PATH** 
 before a program using rri is launched. On linux like systems I'd expect there may be a need
 for something similar in relation to **LD_LIBRARY_PATH** but I haven't had a chance to test it yet.
+
+## Type conversions
+
+R and ruby have quite different type systems, but at least for the most common types of
+data we can implement some natural conversions (in both directions).
+
+TODO: add info on how the type conversion system works
 
 ## Copyright
 

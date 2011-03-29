@@ -1,4 +1,5 @@
 require 'rri/jri'
+require 'rri/r_converters'
 
 module Rri
   
@@ -22,7 +23,52 @@ module Rri
       :callback_object => nil,
       :run_repl => false
     }
+
+    # Add a custom converter used to convert ruby objects to R objects
+    #
+    # @param [#convert] converter the converter to add
+    # @return [Array] known (class level) converters
+    def self.add_r_converter(converter)
+      @@r_converters ||= []
+      @@r_converters << converter
+    end
     
+    # Get all class level custom converters to convert ruby objects to R objects
+    #
+    # Converters are returned in the reversed order to how they were added
+    # (i.e. the last added is applied first)
+    #
+    # @return [Array] all class level custom converters
+    def self.r_converters
+      @@r_converters ||= []
+      @@r_converters.reverse
+    end
+
+    # Clear all class level custom converters
+    def self.clear_r_converters
+      @@r_converters = []
+    end
+    
+    # Get default converters to convert ruby objects to R objects
+    #
+    # @return [Array] all default converters
+    def self.default_r_converters
+      [
+        RConverters::FloatConverter.new,
+        RConverters::IntegerConverter.new,
+        RConverters::StringConverter.new,
+        RConverters::ArrayConverter.new
+      ]
+    end
+
+    # Helper to make sure all engines are finalized so the R thread dies as it should
+    #
+    # @param engine engine to finalize
+    # @return [Proc] that closes the engine
+    def self.finalize(engine)
+      proc { engine.close }
+    end
+
     # Create a new instance of Engine
     # 
     # @param [nil|Hash] options Either a Hash of options to override the defaults, or not given
@@ -44,13 +90,34 @@ module Rri
       # happens when this object is finalized.
       ObjectSpace.define_finalizer(self, self.class.finalize(@engine))
     end
+
+    # Forward any method calls not recognized to JRIEngine
+    def method_missing(method, *args, &block)
+      @engine.send(method, *args, &block)
+    end
+
+    # Add a custom converter used to convert ruby objects to R objects
+    #
+    # @param [#convert] converter the converter to add
+    # @return [Array] known (instance level) converters
+    def add_r_converter(converter)
+      @r_converters ||= []
+      @r_converters << converter
+    end
     
-    # Helper to make sure all engines are finalized so the R thread dies as it should
-    def self.finalize(engine)
-      proc { engine.close }
+    # Get all instance level custom converters to convert ruby objects to R objects
+    #
+    # Converters are returned in the reversed order to how they were added
+    # (i.e. the last added is applied first)
+    #
+    # @return [Array] all instance level custom converters
+    def r_converters
+      @r_converters ||= []
+      @r_converters.reverse
     end
     
     # Eval expression and convert result to the corresponding ruby type
+    #
     # @param [String] expression the R epxression to evaluate
     # @return the result converted to the corresponding ruby type
     def eval_and_convert(expression)
@@ -58,9 +125,14 @@ module Rri
     end
 
     # Convert a ruby value to an R type and assign it to an R variable.
+    #
     # @param obj ruby object to convert and assign to R varible
+    # @param [#to_s] symbol what to call the R variable
     # @return [nil]
-    def convert_and_assign(obj)
+    def convert_and_assign(obj, symbol)
+      success, rexp = convert_to_r_object(obj)
+      raise RriException.new("Failed to convert ruby object to R object for: #{obj}") unless success
+      simple_assign(symbol, obj)
     end
     
     # Helper method to evaluate expressions but avoid any R-to-ruby conversions
@@ -79,49 +151,88 @@ module Rri
     # 
     # Always uses the global environment.
     # 
-    # @param [#to_s] symbol the symbol to use for the R variable name
+    # @param [#to_s] symbol what to call the R variable
     # @return [nil]
     def simple_assign(symbol, rexp)
       @engine.assign(symbol.to_s, rexp, nil)
     end
     
-    # Forward any method calls not recognized to JRIEngine
-    def method_missing(method, *args, &block)
-      @engine.send(method, *args, &block)
+    # Convert a ruby object to a R object
+    #
+    # Applies converters in 3 levels:
+    # * custom converters that is set for only this engine instance
+    # * custom converters that are set for all engine instances
+    # * default converters
+    #
+    # Converters are applied in the reverse order they were added in.
+    #
+    # @param obj ruby object to convert
+    # @return [REXP] the object converter into an R object
+    def convert_to_r_object(obj)
+      # first try converters defined for just this instance
+      success, value = apply_local_r_converters(obj)
+      return value if success
+
+      # then try converters defined in general
+      success, value = apply_r_converters(obj)
+      return value if success
+
+      # and finally apply the default converters   
+      success, value = apply_default_r_converters(obj)
+      return value if success
+
+      # fail if we haven't managed to convert it
+      raise RriException.new("Could not find suitable conversion to R type for: #{obj}")
     end
     
+    def convert_to_ruby_type(rexp)
+      raise "Not implemented!"
+    end
+
     ############################ PRIVATE METHODS ##############################
 
     private
-    
-    def convert_to_ruby_type(rexp)
-      # p rexp.length
-      # rexp.methods.each do |method|
-      #   next unless method =~ /^is[^_].*/
-      #   puts "Converting - checking #{method}: #{rexp.send(method)}"
-      # end
-      if rexp.isEnvironment
-        rexp
-      elsif rexp.isNull
-        nil
-      elsif rexp.isReference
-        rexp
-      elsif rexp.isSymbol
-        rexp
-      elsif rexp.isVector
-        convert_vector(rexp)
-      else
-        rexp
+
+    # Helper method to apply converters
+    #
+    # @param [Array] converters array of converters to try to apply
+    # @param obj object to try to convert
+    # @return [Array] an array of size 2 where first element is a boolean indicating succes,
+    #   and the second element is the converted object if conversion successful    
+    def apply_converters(converters, obj)
+      converters.each do |converter|
+        success, value = converter.convert(obj)
+        return [success, value] if success
       end
+      # if no success, return failure and nil for value
+      [false, nil]
     end
-    
-    def convert_vector(rexp)
-      # TODO: assumes all vectors are just size 1 double vectors
-      rexp.asDouble
+      
+    # Apply custom converters that are defined just for this engine to a ruby object
+    #
+    # @param obj ruby object to convert to R type
+    # @return [Array] an array of size 2 where first element is a boolean indicating succes,
+    #   and the second element is the converted object if conversion successful
+    def apply_local_r_converters(obj)
+      apply_converters(r_converters, obj)
     end
-    
-    def convert_to_r_type(obj)
-      # TODO: implement!
+
+    # Apply custom converters that are defined for all engines to a ruby object
+    #
+    # @param obj ruby object to convert to R type
+    # @return [Array] an array of size 2 where first element is a boolean indicating succes,
+    #   and the second element is the converted object if conversion successful
+    def apply_r_converters(obj)
+      apply_converters(Engine.r_converters, obj)
+    end
+
+    # Apply default converters to ruby object
+    #
+    # @param obj ruby object to convert to R type
+    # @return [Array] an array of size 2 where first element is a boolean indicating succes,
+    #   and the second element is the converted object if conversion successful
+    def apply_default_r_converters(obj)
+      apply_converters(Engine.default_r_converters, obj)
     end
     
   end
