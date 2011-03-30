@@ -1,6 +1,4 @@
-java_import "org.rosuda.REngine.REXPInteger"
-java_import "org.rosuda.REngine.REXPDouble"
-java_import "org.rosuda.REngine.REXPString"
+require 'rri/rexp'
 
 module Rri
   module RConverters

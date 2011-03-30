@@ -1,0 +1,1 @@
+require 'rri/ruby_converters/integer_converter'

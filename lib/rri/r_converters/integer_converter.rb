@@ -1,4 +1,4 @@
-java_import "org.rosuda.REngine.REXPInteger"
+require 'rri/rexp'
 
 module Rri
   module RConverters
