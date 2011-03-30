@@ -1,0 +1,1 @@
+require 'rri/callback_objects/r_engine_std_output'

@@ -7,3 +7,5 @@ require 'rri/java_gd'
 require 'rri/rexp'
 
 require 'rri/engine'
+
+require 'rri/callback_objects'
