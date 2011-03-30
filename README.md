@@ -21,7 +21,7 @@ from taking advantage of [rJava](http://www.rforge.net/rJava/) to also allow R t
 ## Features
 
 * Call R functions from ruby
-* A conversion system for going between R and ruby data types
+* An extendible system for converting between R and ruby data types (in both directions)
 * Plot R graphics using user supplied class
 
 ## Examples
