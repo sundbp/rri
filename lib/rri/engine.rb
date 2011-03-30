@@ -10,12 +10,18 @@ module Rri
   # which is used for all interaction with R. On top of this it provides
   # a few abstractions to easily convert between ruby and R types.
   # 
-  # The main methods of the high level API are (#eval_and_convert) and (#convert_and_assign).
+  # The main methods of the high level API are {#eval_and_convert} and {#convert_and_assign}.
+  # The high level API converts to/from R/ruby using a type conversion system described 
+  # in the README.
+  #
   # It also provides a couple of helper methods just to make the users life easier when
-  # working with the lower level java API, most notably (#simple_eval) and (#simple_assign).
+  # working with the lower level java API, most notably {#simple_eval} and {#simple_assign}.
+  # These functions do not convert values but instead work with references to R objects
+  # and are preferred when you don't really care about converting to/from ruby (e.g.
+  # intermediate steps of calculations and similar)
   # 
-  # Apart from the high level API and the helper methods the user can use any other method
-  # on JRIEngine, it will be forwarded via method_missing.
+  # Apart from the methods on this ruby class the user can also use any other method
+  # on JRIEngine, it will be forwarded via {#method_missing}.
   class Engine
     
     # Default options used when creating an engine
@@ -108,17 +114,10 @@ module Rri
     
     # Create a new instance of Engine
     # 
-    # @param [nil|Hash] options Either a Hash of options to override the defaults, or not given
+    # @param [Hash] options A Hash of options to override the defaults, or not given
     #   in which case the defaults will be used.
-    def initialize(*options)
-      combined_options = case options.size
-      when 0
-        DEFAULT_ENGINE_OPTIONS
-      when 1
-        DEFAULT_ENGINE_OPTIONS.merge(options[0])
-      else
-        raise RriException.new("Can only take 0 or 1 arguments!")
-      end
+    def initialize(options = {})
+      combined_options = DEFAULT_ENGINE_OPTIONS.merge(options)
       
       @engine = Jri::JRIEngine.new(combined_options[:r_arguments].to_java(:string),
                                    combined_options[:callback_object],

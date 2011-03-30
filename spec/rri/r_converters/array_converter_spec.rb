@@ -45,4 +45,12 @@ describe Rri::RConverters::ArrayConverter do
     success, value = subject.convert([1, 1.2])
     success.should be_false
   end
+  
+  it "should fail to convert an Array with elements of same but unsupported types" do
+    class Foo
+    end
+    success, value = subject.convert([Foo.new, Foo.new])
+    success.should be_false
+  end
+
 end

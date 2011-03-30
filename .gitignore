@@ -4,3 +4,4 @@ Gemfile.lock
 vendor/cache/*.gem
 .redcar/
 .yardoc/
+coverage/

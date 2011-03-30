@@ -12,4 +12,5 @@ group :development do
   gem 'awesome_print'
   gem 'guard',        '~> 0.3.0'
   gem 'guard-rspec',  '~> 0.2.0'
+  gem 'rcov',         '~> 0.9.9'
 end

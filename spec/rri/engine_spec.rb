@@ -34,10 +34,6 @@ describe Rri::Engine do
     it "should instantiate passing options to .new" do
       Rri::Engine.new(:r_arguments => ["--save"], :run_repl => false).should_not be_nil
     end
-    
-    it "should fail to instantiate when passing bad arguments" do
-      expect {Rri::Engine.new(1, 2, 3)}.to raise_error(Rri::RriException)
-    end
   end
   
   describe "when converting ruby objects to R objects" do

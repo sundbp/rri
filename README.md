@@ -21,6 +21,7 @@ from taking advantage of [rJava](http://www.rforge.net/rJava/) to also allow R t
 ## Features
 
 * Call R functions from ruby
+* A conversion system for going between R and ruby data types
 * Plot R graphics using user supplied class
 
 ## Examples
@@ -29,14 +30,23 @@ from taking advantage of [rJava](http://www.rforge.net/rJava/) to also allow R t
     
     engine = Rri::Engine.new
     
-    # high level API
+    # high level API, converts results and arguments from and to R/ruby
     result = engine.eval_and_convert("1.23 + 4.56") # result will be a noromal ruby Float (5.79)
-    engine.convert_and_assign("x", result)          # x = 5.79 in R
+    engine.convert_and_assign(result, :x)           # x = 5.79 in R
+    result = engine.get_and_convert(:x)             # result is a ruby Float
     
-    # helpers for the low level API
-    result = engine.simple_eval("x + 1")
-    engine.simple_assign("y", result)               # y = 6.79 in R
+    # helpers for the low level API, useful when you're not bothered
+    # about converting any values to/from R/ruby
+    result = engine.simple_eval("x + 1")            # returns a reference to R object
+    engine.simple_assign("y", result)               # y = 6.79 in R, assumes the value is an R object, 
+                                                    # no conversion takes place.
+    result = engine.simple_get(:y)                  # returns a reference to R object
     
+    # we should always close an engine, if we don't the R thread
+    # seem to hang around forever causing the ruby program to not
+    # exit. There is however also a finalizer defined that should
+    # automatically take care of this.
+    #
     # use normal JRIEngine API via method missing forwarding
     engine.close
     
@@ -90,7 +100,29 @@ for something similar in relation to **LD_LIBRARY_PATH** but I haven't had a cha
 R and ruby have quite different type systems, but at least for the most common types of
 data we can implement some natural conversions (in both directions).
 
-TODO: add info on how the type conversion system works
+Type conversion in both directions are tried in 3 levels:
+* first custom specified (user) converters for a given engine are tried
+* then custom specified (user) converters applicable to all engines are tried
+* and finally a set of default converters specified by rri itself are applied
+
+For custom converters the order in which they are tried is the reverse order
+in which they were added, so the latest added converter is tried first.
+
+To write your own custom converters please take a look at the default ones
+in rri/r_converters and rri/ruby_converters. For help with the R type system
+the REXP [JavaDocs](http://www.rforge.net/org/docs/org/rosuda/REngine/REXP.html)
+are a good place to start.
+
+**TODO**: describe the default converters, for now best docs are the specs
+
+## Note about instantiating engines many times in the same process
+
+There seem to be issues in the C layer of either JRI or the R library when
+you create an engine many times in the same process. That applies also if
+you never have more than one engine created at any one time.
+
+Emperically I get an infinite hang in the C layer if I re-create an engine
+more than ~12 times in the same process.
 
 ## Copyright
 
