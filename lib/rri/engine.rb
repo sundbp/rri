@@ -98,7 +98,7 @@ module Rri
     # @return [Array] all default converters
     def self.default_ruby_converters
       [
-        #RubyConverters::DoubleConverter.new,
+        RubyConverters::DoubleConverter.new,
         RubyConverters::IntegerConverter.new,
         #RubyConverters::StringConverter.new,
       ]
@@ -204,7 +204,9 @@ module Rri
     # @param [String] expression the R epxression to evaluate
     # @return the result converted to the corresponding ruby type
     def eval_and_convert(expression)
-      convert_to_ruby_type(@engine.parseAndEval(expression))
+      success, value = convert_to_ruby_object(@engine.parseAndEval(expression))
+      raise RriException.new("Failed to convert R object to ruby object for: #{value}") unless success
+      value
     end
 
     # Helper method to assign expressions to R variables

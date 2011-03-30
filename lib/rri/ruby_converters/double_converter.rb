@@ -5,19 +5,19 @@ module Rri
     
     # Converter for R Integers
     #
-    # Convert R integer to ruby Fixnum
-    class IntegerConverter
+    # Convert R double to ruby Fixnum
+    class DoubleConverter
       
       # Convert R object to ruby format
       # 
-      # If the R object is an integer, converts it into a ruby Fixnum
+      # If the R object is a double, converts it into a ruby Float
       # 
       # @param [REXP] rexp rexp to convert
       # @return [Array] an array of size 2 where first element is a boolean indicating succes,
       #   and the second element is the converted object if conversion successful    
       def convert(rexp)
-        if rexp.kind_of?(REXP) and rexp.isInteger and rexp.length == 1
-          [true, rexp.asInteger]
+        if rexp.kind_of?(REXP) and rexp.isNumeric and !rexp.isInteger and !rexp.isComplex and rexp.length == 1
+          [true, rexp.asDouble]
         else
           [false, nil]
         end
