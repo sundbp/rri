@@ -1,6 +1,6 @@
 # rri
 
-* [Homepage](http://rubygems.org/gems/rri)
+* [Homepage](https://github.com/sundbp/rri)
 * [Documentation](http://rubydoc.info/gems/rri/frames)
 
 ## Description
