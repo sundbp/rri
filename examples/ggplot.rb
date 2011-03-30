@@ -24,6 +24,7 @@ end
 random_numbers = []
 1000.times { random_numbers << gaussian_rand }
 
+# use the std out callback object to get some printouts from R, good for debugging.
 engine = Rri::Engine.new(:callback_object => Rri::CallbackObjects::REngineStdOutput.new)
 
 filename = "ggplot.pdf"
