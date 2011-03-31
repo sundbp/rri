@@ -1,6 +1,6 @@
 name: rri
-summary: "TODO: Summary"
-description: "TODO: Description"
+summary: "Ruby/R Interface for JRuby"
+description: "Ruby/R Interface - A wrapper of jri (Java/R Interface) for JRuby"
 license: MIT
 authors: Patrik Sundberg
 homepage: http://rubygems.org/gems/rri
