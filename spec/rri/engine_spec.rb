@@ -52,6 +52,7 @@ describe Rri::Engine do
       Rri::Engine.clear_ruby_converters
       @engine.clear_r_converters
       @engine.clear_ruby_converters
+      @engine.clear_all_eval_expression_listeners
     end
   
     after(:all) do
@@ -232,5 +233,46 @@ describe Rri::Engine do
     it "should raise if it can't correctly convert a ruby object and assign it to an R variable" do
       expect { @engine.convert_and_assign(@engine, :x) }.to raise_error(Rri::RriException)
     end
+    
+    it "should correctly add and remove eval expression listeners given as Proc's" do
+      @engine.eval_expression_listeners.size.should == 0
+      listener = Proc.new {|msg| msg }
+      @engine.add_eval_expression_listener(listener)
+      @engine.eval_expression_listeners.size.should == 1
+      @engine.eval_expression_listeners[0] == listener
+      @engine.remove_eval_expression_listener(listener)
+      @engine.eval_expression_listeners.size.should == 0
+    end
+
+    it "should correctly add eval expression listeners given as block" do
+      @engine.eval_expression_listeners.size.should == 0
+      @engine.add_eval_expression_listener do |msg|
+        msg
+      end
+      @engine.eval_expression_listeners.size.should == 1
+      @engine.eval_expression_listeners[0].class.should == Proc
+      @engine.clear_all_eval_expression_listeners
+      @engine.eval_expression_listeners.size.should == 0
+    end
+
+    it "should correctly call eval expression listeners" do
+      result_block = nil
+      result_proc = nil
+      @engine.add_eval_expression_listener do |msg|
+        result_block = msg
+      end
+      proc = Proc.new {|msg| result_proc = msg}
+      @engine.add_eval_expression_listener(proc)
+      
+      expr = "1 + 1"
+      @engine.simple_eval(expr)
+      result_block.should == expr
+      result_proc.should == expr
+      expr = "1 + 2"
+      @engine.eval_and_convert(expr)
+      result_block.should == expr
+      result_proc.should == expr
+    end
+    
   end
 end

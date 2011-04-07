@@ -158,6 +158,10 @@ module Rri
     def self.finalize(engine)
       proc { engine.close }
     end
+
+    ###############################################################
+    
+    attr_reader :eval_expression_listeners
     
     # Create a new instance of Engine
     # 
@@ -193,11 +197,33 @@ module Rri
     # Useful for logging.
     # @param block the block to execute for every expression to be evaluated 
     #   (expression is given as argument to block)
-    def add_eval_expression_listener(&block)
+    def add_eval_expression_listener(listener = nil, &listener_block)
       @eval_expression_listeners ||= []
-      @eval_expression_listeners << block
+      unless listener.nil?
+        raise Rri::RriException.new("Can't give both explicit listener and block!") unless listener_block.nil?
+        @eval_expression_listeners << listener
+      else
+        @eval_expression_listeners << listener_block
+      end
     end
-    
+
+    # Remove an eval expression listener
+    #
+    # @param block the block to remove as a listener
+    # @return [true|false] true if listener exists and was removed, false if 
+    #   it does not exists
+    def remove_eval_expression_listener(listener)
+      @eval_expression_listeners ||= []
+      @eval_expression_listeners.delete(listener)
+    end
+
+    # Clear all eval expression listeners
+    #
+    # Empties all eval expression listeners
+    def clear_all_eval_expression_listeners
+      @eval_expression_listeners = []
+    end
+
     # Add a custom converter used to convert ruby objects to R objects
     #
     # @param [#convert] converter the converter to add
