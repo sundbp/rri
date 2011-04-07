@@ -65,6 +65,12 @@ module Rri
       defined? @@engine and not @@engine.nil?
     end
     
+    # The (class level) engine singleton
+    # [Engine] the class level engine singleton
+    def self.engine
+      @@engine
+    end
+    
     # Default options used when creating an engine
     DEFAULT_ENGINE_OPTIONS = {
       :r_arguments => ["--no-save"],
@@ -163,7 +169,9 @@ module Rri
       @engine = Jri::JRIEngine.new(combined_options[:r_arguments].to_java(:string),
                                    combined_options[:callback_object],
                                    combined_options[:run_repl])
-                                  
+
+      @eval_expression_listeners = []
+      
       # the R thread wont die unless we call #close on @engine, so make sure this
       # happens when this object is finalized.
       ObjectSpace.define_finalizer(self, self.class.finalize(@engine))
@@ -178,6 +186,18 @@ module Rri
       end
     end
 
+    # Add an eval expression listener
+    #
+    # The listener will get called each time that this engine
+    # is about to evaluate an expression.
+    # Useful for logging.
+    # @param block the block to execute for every expression to be evaluated 
+    #   (expression is given as argument to block)
+    def add_eval_expression_listener(&block)
+      @eval_expression_listeners ||= []
+      @eval_expression_listeners << block
+    end
+    
     # Add a custom converter used to convert ruby objects to R objects
     #
     # @param [#convert] converter the converter to add
@@ -237,6 +257,7 @@ module Rri
     # @return [REXPReference] reference to the result of the expression
     def simple_eval(expression)
       parsed_expression = @engine.parse(expression, false)
+      notify_expression_listeners(expression)
       @engine.eval(parsed_expression, nil, false)
     end
     
@@ -245,6 +266,7 @@ module Rri
     # @param [String] expression the R epxression to evaluate
     # @return the result converted to the corresponding ruby type
     def eval_and_convert(expression)
+      notify_expression_listeners(expression)
       success, value = convert_to_ruby_object(@engine.parseAndEval(expression))
       raise RriException.new("Failed to convert R object to ruby object for: #{value}") unless success
       value
@@ -358,6 +380,10 @@ module Rri
 
     private
 
+    def notify_expression_listeners(expression)
+      @eval_expression_listeners.each {|listener| listener.call(expression) }      
+    end
+    
     # Helper method to apply converters
     #
     # @param [Array] converters array of converters to try to apply
