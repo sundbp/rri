@@ -1,4 +1,5 @@
 require 'rri/jri'
+require 'rri/rri_exception'
 require 'rri/r_converters'
 require 'rri/ruby_converters'
 
@@ -23,6 +24,46 @@ module Rri
   # Apart from the methods on this ruby class the user can also use any other method
   # on JRIEngine, it will be forwarded via {#method_missing}.
   class Engine
+
+    # Create the (class level) engine singleton
+    #
+    # Only one JRI instance can exist per JVM process, so Engine.create_engine and Engine.use_engine
+    # provides an interface to make sure we only have one active JRI instance.
+    # 
+    # Nothing stops you from manually creating the engine - you're a grown up, but these class
+    # methods are provided as an alternative for handling engine access.
+    # 
+    # @see #use_engine
+    # @param [Hash] options options to use when creating the engine (see DEFAULT_ENGINE_OPTIONS)
+    def self.create_engine(options = {})
+      raise Rri::RriException.new("Can only create one engine per process!") if Engine.engine_is_created?
+      @@engine = Engine.new(options)
+    end
+    
+    # Use the (class level) engine singleton
+    #
+    # Yields the engine to the supplied block
+    #
+    # Note that the JRIEngine itself is thread-safe, so we don't need to coordinate access
+    # to calling methods on the engine.
+    # @yield [Engine] Block gets passed the class level engine 
+    # @return the result of the supplied block
+    def self.use_engine
+      raise Rri::RriException.new("You need to call Rri::Engine.create_engine before using Rri::Engine.use_engine") unless Engine.engine_is_created?
+      yield @@engine
+    end
+
+    # Close and dispose of the (class level) engine singleton
+    def self.close_engine
+      @@engine.close unless @@engine.nil?
+      @@engine = nil
+    end
+    
+    # Check if engine has been created
+    # @return true if created, otherwise false
+    def self.engine_is_created?
+      defined? @@engine and not @@engine.nil?
+    end
     
     # Default options used when creating an engine
     DEFAULT_ENGINE_OPTIONS = {
