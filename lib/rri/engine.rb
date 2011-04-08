@@ -46,11 +46,26 @@ module Rri
     #
     # Note that the JRIEngine itself is thread-safe, so we don't need to coordinate access
     # to calling methods on the engine.
+    #
+    # Possible options to pass in:
+    # * :r_converters
+    #
     # @yield [Engine] Block gets passed the class level engine 
+    # @param [Hash] options a set of options to apply only for this block
     # @return the result of the supplied block
-    def self.use_engine
+    def self.use_engine(options = {})
       raise Rri::RriException.new("You need to call Rri::Engine.create_engine before using Rri::Engine.use_engine") unless Engine.engine_is_created?
-      yield @@engine
+      begin
+        extra_r_converters = if options.has_key? :r_converters
+          options[:r_converters]
+        else
+          []
+        end
+        extra_r_converters.each {|converter| @@engine.add_r_converter(converter) }
+        yield @@engine
+      ensure
+        extra_r_converters.each {|converter| @@engine.remove_r_converter(converter) }
+      end
     end
 
     # Close and dispose of the (class level) engine singleton
@@ -232,7 +247,16 @@ module Rri
       @r_converters ||= []
       @r_converters << converter
     end
-    
+
+    # Remove a custom converter used to convert ruby objects to R objects
+    #
+    # @param [#convert] converter the converter to remove
+    # @return the removed converter or nil if it wasn't found 
+    def remove_r_converter(converter)
+      @r_converters ||= []
+      @r_converters.delete(converter)
+    end
+
     # Get all instance level custom converters to convert ruby objects to R objects
     #
     # Converters are returned in the reversed order to how they were added
