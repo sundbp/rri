@@ -162,6 +162,7 @@ module Rri
       [
         RubyConverters::DoubleConverter.new,
         RubyConverters::IntegerConverter.new,
+        RubyConverters::NullConverter.new,
         #RubyConverters::StringConverter.new,
       ]
     end
